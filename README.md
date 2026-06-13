@@ -58,6 +58,18 @@ npm run pages:deploy
 
 The submit form posts to `/api/submit`. In Cloudflare Pages, `functions/api/submit.ts` validates the payload and writes pending submissions to D1 when the `FABLE_LEGACY_DB` binding is configured.
 
+## Review submissions
+
+Pending submissions can be reviewed from `/#admin`. The admin page calls `/api/admin/submissions`, which requires an admin token in `Authorization: Bearer <token>`.
+
+Configure the token as a Cloudflare Pages environment variable:
+
+```bash
+npx wrangler pages secret put FABLE_ADMIN_TOKEN --project-name=fable-legacy
+```
+
+Approving a submission publishes it into `archive_projects` with `status = 'published'`, marks the original submission as `approved`, and makes it visible through `/api/archive`. Rejecting a submission marks it as `rejected`.
+
 ## Seed research notes
 
 The first archive data lives in `src/data/projects.ts`. Entries intentionally include an evidence level:

@@ -10,17 +10,60 @@ import {
   Filter,
   Inbox,
   Link2,
+  LockKeyhole,
+  RefreshCw,
   Search,
   Send,
   ShieldAlert,
   Sparkles
 } from "lucide-react";
 import heroImage from "./assets/archive-hero.png";
-import { projects, sources, timeline, typeLabels, type LegacyProject } from "./data/projects";
+import { typeLabels, type LegacyProject } from "./data/projects";
 import "./styles.css";
 
 type SubmitState = "idle" | "submitting" | "sent" | "error";
 type Lang = "en" | "zh";
+type LoadState = "loading" | "ready" | "error";
+type AdminState = "idle" | "loading" | "ready" | "error";
+
+type ProjectTranslation = Partial<Pick<LegacyProject, "name" | "author" | "usage" | "summary" | "imageHint">>;
+
+type TimelineEvent = {
+  id: string;
+  date: string;
+  title: string;
+  body: string;
+};
+
+type SourceEntry = {
+  id: string;
+  label: string;
+  url: string;
+  note: string;
+};
+
+type ArchiveData = {
+  projects: LegacyProject[];
+  projectTranslations: Record<string, Record<string, ProjectTranslation>>;
+  timeline: TimelineEvent[];
+  timelineTranslations: Record<string, Record<string, Partial<Pick<TimelineEvent, "title" | "body">>>>;
+  sources: SourceEntry[];
+  sourceTranslations: Record<string, Record<string, Partial<Pick<SourceEntry, "label" | "note">>>>;
+};
+
+type AdminSubmission = {
+  id: string;
+  project_name: string;
+  project_url: string;
+  author: string;
+  contact: string | null;
+  project_type: string;
+  fable_usage: string;
+  description: string;
+  proof_url: string;
+  status: string;
+  created_at: string;
+};
 
 const copy = {
   en: {
@@ -46,7 +89,9 @@ const copy = {
       title: "Browse the surviving traces",
       body: "Entries are labeled by evidence level. Official demos, press references, social posts, and community claims are useful, but they are not equally proven.",
       search: "Search projects, authors, tags...",
-      empty: "No entries match this filter yet."
+      empty: "No entries match this filter yet.",
+      loading: "Loading archive data...",
+      error: "Archive data could not be loaded."
     },
     submit: {
       eyebrow: "Community Intake",
@@ -119,7 +164,9 @@ const copy = {
       title: "浏览留下来的痕迹",
       body: "每个条目都会标注证据等级。官方演示、媒体引用、社交发布与社区线索都值得保存，但它们的可信度并不相同。",
       search: "搜索项目、作者、标签...",
-      empty: "没有符合当前筛选的条目。"
+      empty: "没有符合当前筛选的条目。",
+      loading: "正在加载档案数据...",
+      error: "档案数据加载失败。"
     },
     submit: {
       eyebrow: "社区收录",
@@ -195,7 +242,8 @@ const typeLabel: Record<Lang, Record<(typeof typeLabels)[number], string>> = {
     Website: "Website",
     Research: "Research",
     Benchmark: "Benchmark",
-    Refactor: "Refactor"
+    Refactor: "Refactor",
+    Optimization: "Optimization"
   },
   zh: {
     All: "全部",
@@ -205,137 +253,8 @@ const typeLabel: Record<Lang, Record<(typeof typeLabels)[number], string>> = {
     Website: "网站",
     Research: "研究",
     Benchmark: "评测",
-    Refactor: "重构"
-  }
-};
-
-const timelineZh = [
-  {
-    title: "Claude Fable 5 公开发布",
-    body: "Anthropic 将 Fable 5 作为面向高难推理与长程任务的 Mythos 级 Claude 模型开放使用。"
-  },
-  {
-    title: "访问被暂停",
-    body: "Anthropic 表示，为遵守美国政府出口管制指令，必须突然停止客户对 Fable 5 与 Mythos 5 的访问。"
-  },
-  {
-    title: "档案开始建立",
-    body: "首批公开演示、评测、帖子与社区作品被整理到这里，成为持续更新的 Fable Legacy 索引。"
-  }
-];
-
-const sourceZh = [
-  ["Anthropic 发布文章", "Fable 5 官方背景与内置演示的一手来源。"],
-  ["Anthropic 停用声明", "解释访问暂停原因的一手来源，也是这个档案站成立的背景。"],
-  ["Claude API 文档", "模型命名、用途与可用性说明。"],
-  ["Claude 官方社交线程", "官方社区展示线程；部分媒体内容仍需要人工复核。"],
-  ["ExplainX 社区汇总", "首批社区项目的二手汇总。"],
-  ["Pasquale Pillitteri 社区反应文章", "对官方线程与社区反馈的二手记录。"],
-  ["AWS 发布文章", "合作方发布的可用性背景。"],
-  ["Endor Labs 安全评测", "包含编码与安全任务表现的独立评测。"],
-  ["CodeRabbit 模型评审", "提到实时应用生成与构建表现的评审文章。"],
-  ["Reddit 前端重构帖", "社区用户描述完整前端重构的投稿。"],
-  ["YouTube Higgsfield 动效网站", "创作者视频，声称使用 Claude Fable 5 与 Higgsfield MCP 制作动效网站。"]
-];
-
-const projectZh: Record<string, Partial<Pick<LegacyProject, "name" | "author" | "usage" | "summary" | "imageHint">>> = {
-  "solar-system-physics": {
-    name: "物理优先的太阳系模拟器",
-    author: "Anthropic 演示",
-    usage: "Fable 5 自主构建模拟，从第一性原理推导轨道运动，并用它预测日食。",
-    summary: "Anthropic 发布材料中的科学模拟案例，用来展示长程推理与实现能力。",
-    imageHint: "轨道轨迹与日食预测"
-  },
-  "factorio-agent": {
-    name: "自主 Factorio 工厂",
-    author: "Anthropic 演示",
-    usage: "Fable 5 自主游玩 Factorio，制定策略并搭建自动化工厂。",
-    summary: "一个游戏任务演示，展示 Fable 5 在动态环境中持续规划的能力。",
-    imageHint: "传送带与自动化建造计划"
-  },
-  "browser-cad-copilot": {
-    name: "浏览器 CAD 编辑器与 3D 打印模型",
-    author: "Anthropic 演示",
-    usage: "Fable 5 创建了浏览器 CAD 编辑器、其中的 AI 助手，并在里面完成一个可 3D 打印模型。",
-    summary: "一个嵌套式创作案例：Fable 5 先做工具，再用工具产出实体设计。",
-    imageHint: "浏览器 CAD 界面中的参数化模型"
-  },
-  "ruby-codebase-migration": {
-    name: "五千万行 Ruby 代码库迁移",
-    author: "发布报道引用",
-    usage: "报道称该大规模迁移在 Fable 5 辅助下约一天完成。",
-    summary: "一个偏工程规模的案例，被用于说明 Fable 5 的代理式编码能力。",
-    imageHint: "大型仓库迁移记录"
-  },
-  "pokemon-firered-vision": {
-    name: "Pokemon FireRed 视觉通关",
-    author: "发布报道引用",
-    usage: "报道称 Fable 5 仅依靠视觉输入游玩 Pokemon FireRed。",
-    summary: "围绕 Fable 5 发布传播的视觉与控制类游戏演示。",
-    imageHint: "复古游戏画面输入流"
-  },
-  "survey-analysis-tool": {
-    name: "高级问卷分析工具",
-    author: "发布报道引用",
-    usage: "在一次长时间自主工作中，为学术式问卷分析创建工具。",
-    summary: "一个研究工具案例，指向 Fable 5 在数据探索、分析界面与长程实现上的用途。",
-    imageHint: "问卷数据面板与统计模块"
-  },
-  "procedural-shaders": {
-    name: "程序化着色器研究",
-    author: "官方线程中的社区创作者",
-    usage: "首批展示中被收录的 Fable 5 社区项目。",
-    summary: "展示实时着色器组合与代码驱动动画的生成式视觉实验。",
-    imageHint: "程序化材质样本"
-  },
-  "fluid-ink-simulation": {
-    name: "流体墨迹模拟",
-    author: "官方线程中的社区创作者",
-    usage: "首批创意编程作品之一，据称由 Fable 5 制作。",
-    summary: "Canvas/WebGL 风格的流体视觉，代表早期 Fable 5 作品中富表现力的交互前端。",
-    imageHint: "墨迹扩散与模拟控制"
-  },
-  "goldfish-app": {
-    name: "Goldfish 应用",
-    author: "官方线程中的社区创作者",
-    usage: "在首个 72 小时社区汇总中被提到的 Fable 5 作品。",
-    summary: "一个轻巧的社区应用，作为 Fable 5 短暂开放窗口里的早期公开遗产保存。",
-    imageHint: "小型互动应用"
-  },
-  "motion-website-higgsfield": {
-    name: "结合 Higgsfield MCP 的动效网站",
-    author: "YouTube 创作者",
-    usage: "视频标题和描述称使用 Claude Fable 5 与 Higgsfield MCP 制作带生成媒体素材的动效网站。",
-    summary: "一个创作者流程案例，Fable 5 将代码与媒体生成编排成动效丰富的网站。",
-    imageHint: "动效落地页与视频素材"
-  },
-  "real-time-app-review": {
-    name: "CodeRabbit 评审的实时应用",
-    author: "CodeRabbit 评审",
-    usage: "评审描述 Fable 5 构建了含程序化视觉、阶段变化与成功生产构建的实时应用。",
-    summary: "一个有保存价值的评审条目，因为它同时记录了优势与仍需改进的工程细节。",
-    imageHint: "实时状态循环与画布效果"
-  },
-  "agent-security-league-benchmark": {
-    name: "Agent Security League 评测",
-    author: "Endor Labs",
-    usage: "Fable 5 在 200 个真实编码任务中接受评测，包括功能与安全修复。",
-    summary: "档案中的平衡条目：不是展示作品，而是 Fable 5 在实际工程任务中的表现证据。",
-    imageHint: "评测网格与问题轨迹"
-  },
-  "personal-os-overhaul": {
-    name: "个人 OS 前端重构",
-    author: "Reddit 社区帖",
-    usage: "用户描述使用 Fable 5 高效完成个人 webapp OS 的前端整体改造。",
-    summary: "一个社区重构条目，涉及每日概览、邮件、日历、任务、开发项目、新闻与知识库界面。",
-    imageHint: "高密度个人仪表盘"
-  },
-  "soccer-neo-gothic-plane": {
-    name: "足球游戏、哥特城市与飞机模型合集",
-    author: "Instagram 社区帖",
-    usage: "社交帖子描述了一组使用 Claude Fable 5 制作的项目，包括足球游戏、哥特城市和飞机模型。",
-    summary: "一个等待直接媒体复核的合集线索；它命名了多个视觉项目，适合作为后续收录目标。",
-    imageHint: "三件套社交展示"
+    Refactor: "重构",
+    Optimization: "优化"
   }
 };
 
@@ -344,17 +263,40 @@ function initialLang(): Lang {
   return navigator.language.toLowerCase().startsWith("zh") ? "zh" : "en";
 }
 
-function localizedProject(project: LegacyProject, lang: Lang) {
-  return lang === "zh" ? { ...project, ...projectZh[project.id] } : project;
+function localizedProject(project: LegacyProject, translations: ArchiveData["projectTranslations"], lang: Lang) {
+  return lang === "zh" ? { ...project, ...translations.zh?.[project.id] } : project;
+}
+
+function localizedTimeline(event: TimelineEvent, translations: ArchiveData["timelineTranslations"], lang: Lang) {
+  return lang === "zh" ? { ...event, ...translations.zh?.[event.id] } : event;
+}
+
+function localizedSource(source: SourceEntry, translations: ArchiveData["sourceTranslations"], lang: Lang) {
+  return lang === "zh" ? { ...source, ...translations.zh?.[source.id] } : source;
 }
 
 function App() {
+  const [isAdmin, setIsAdmin] = useState(() => typeof window !== "undefined" && window.location.hash === "#admin");
   const [lang, setLang] = useState<Lang>(initialLang);
+  const [archiveData, setArchiveData] = useState<ArchiveData | null>(null);
+  const [loadState, setLoadState] = useState<LoadState>("loading");
   const [query, setQuery] = useState("");
   const [selectedType, setSelectedType] = useState<(typeof typeLabels)[number]>("All");
-  const [selectedProject, setSelectedProject] = useState<LegacyProject | null>(projects[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const t = copy[lang];
+  const projects = archiveData?.projects ?? [];
+  const timeline = archiveData?.timeline ?? [];
+  const sources = archiveData?.sources ?? [];
+
+  useEffect(() => {
+    function onHashChange() {
+      setIsAdmin(window.location.hash === "#admin");
+    }
+
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
@@ -368,10 +310,37 @@ function App() {
     );
   }, [lang]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadArchive() {
+      setLoadState("loading");
+      try {
+        const response = await fetch("/api/archive", { headers: { Accept: "application/json" } });
+        if (!response.ok) throw new Error("Archive request failed");
+        const data = (await response.json()) as ArchiveData;
+        if (cancelled) return;
+        setArchiveData(data);
+        setSelectedProjectId(data.projects[0]?.id ?? null);
+        setLoadState("ready");
+      } catch {
+        if (cancelled) return;
+        setArchiveData(null);
+        setSelectedProjectId(null);
+        setLoadState("error");
+      }
+    }
+
+    void loadArchive();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const filteredProjects = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return projects.filter((project) => {
-      const localized = localizedProject(project, lang);
+      const localized = localizedProject(project, archiveData?.projectTranslations ?? {}, lang);
       const matchesType = selectedType === "All" || project.type === selectedType;
       const haystack = [
         localized.name,
@@ -385,7 +354,9 @@ function App() {
         .toLowerCase();
       return matchesType && (!normalized || haystack.includes(normalized));
     });
-  }, [lang, query, selectedType]);
+  }, [archiveData?.projectTranslations, lang, projects, query, selectedType]);
+
+  const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? filteredProjects[0] ?? null;
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -404,12 +375,12 @@ function App() {
       form.reset();
       setSubmitState("sent");
     } catch {
-      const localQueue = JSON.parse(localStorage.getItem("fable-legacy-submissions") ?? "[]");
-      localQueue.push({ ...payload, createdAt: new Date().toISOString(), status: "local-draft" });
-      localStorage.setItem("fable-legacy-submissions", JSON.stringify(localQueue));
-      form.reset();
-      setSubmitState("sent");
+      setSubmitState("error");
     }
+  }
+
+  if (isAdmin) {
+    return <AdminPanel onExit={() => setIsAdmin(false)} />;
   }
 
   return (
@@ -467,14 +438,17 @@ function App() {
         </aside>
       </section>
 
-      <section className="timeline" aria-label={t.aria.timeline}>
-        {timeline.map((item, index) => (
-          <article key={item.date}>
+        <section className="timeline" aria-label={t.aria.timeline}>
+        {timeline.map((item) => {
+          const localized = localizedTimeline(item, archiveData?.timelineTranslations ?? {}, lang);
+          return (
+          <article key={item.id}>
             <time dateTime={item.date}>{item.date}</time>
-            <h2>{lang === "zh" ? timelineZh[index].title : item.title}</h2>
-            <p>{lang === "zh" ? timelineZh[index].body : item.body}</p>
+            <h2>{localized.title}</h2>
+            <p>{localized.body}</p>
           </article>
-        ))}
+          );
+        })}
       </section>
 
       <section className="archive-section" id="archive">
@@ -510,22 +484,34 @@ function App() {
 
         <div className="archive-grid">
           <div className="project-list">
+            {loadState === "loading" && (
+              <div className="empty-state">
+                <Clock3 size={22} />
+                <p>{t.archive.loading}</p>
+              </div>
+            )}
+            {loadState === "error" && (
+              <div className="empty-state">
+                <ShieldAlert size={22} />
+                <p>{t.archive.error}</p>
+              </div>
+            )}
             {filteredProjects.map((project) => (
               <button
                 className={`project-card ${selectedProject?.id === project.id ? "selected" : ""}`}
                 key={project.id}
-                onClick={() => setSelectedProject(project)}
+                onClick={() => setSelectedProjectId(project.id)}
                 type="button"
               >
                 <span className={`badge evidence-${project.evidence}`}>{evidenceLabel[lang][project.evidence]}</span>
-                <h3>{localizedProject(project, lang).name}</h3>
-                <p>{localizedProject(project, lang).summary}</p>
+                <h3>{localizedProject(project, archiveData?.projectTranslations ?? {}, lang).name}</h3>
+                <p>{localizedProject(project, archiveData?.projectTranslations ?? {}, lang).summary}</p>
                 <span className="card-meta">
-                  {typeLabel[lang][project.type]} · {localizedProject(project, lang).author}
+                  {typeLabel[lang][project.type]} · {localizedProject(project, archiveData?.projectTranslations ?? {}, lang).author}
                 </span>
               </button>
             ))}
-            {filteredProjects.length === 0 && (
+            {loadState === "ready" && filteredProjects.length === 0 && (
               <div className="empty-state">
                 <Search size={22} />
                 <p>{t.archive.empty}</p>
@@ -533,7 +519,13 @@ function App() {
             )}
           </div>
 
-          <ProjectDetail project={selectedProject ?? filteredProjects[0] ?? projects[0]} lang={lang} />
+          {selectedProject && (
+            <ProjectDetail
+              project={selectedProject}
+              projectTranslations={archiveData?.projectTranslations ?? {}}
+              lang={lang}
+            />
+          )}
         </div>
       </section>
 
@@ -607,16 +599,19 @@ function App() {
           <h2>{t.sources.title}</h2>
         </div>
         <div className="source-grid">
-          {sources.map((source, index) => (
+          {sources.map((source) => {
+            const localized = localizedSource(source, archiveData?.sourceTranslations ?? {}, lang);
+            return (
             <a className="source-card" href={source.url} target="_blank" rel="noreferrer" key={source.url}>
               <span>
                 <Link2 size={16} />
-                {lang === "zh" ? sourceZh[index][0] : source.label}
+                {localized.label}
               </span>
-              <p>{lang === "zh" ? sourceZh[index][1] : source.note}</p>
+              <p>{localized.note}</p>
               <ExternalLink size={16} />
             </a>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -631,9 +626,196 @@ function App() {
   );
 }
 
-function ProjectDetail({ project, lang }: { project: LegacyProject; lang: Lang }) {
+function AdminPanel({ onExit }: { onExit: () => void }) {
+  const [token, setToken] = useState(() => localStorage.getItem("fable-admin-token") ?? "");
+  const [submissions, setSubmissions] = useState<AdminSubmission[]>([]);
+  const [adminState, setAdminState] = useState<AdminState>("idle");
+  const [message, setMessage] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function loadSubmissions(nextToken = token) {
+    setAdminState("loading");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/admin/submissions?status=pending", {
+        headers: adminHeaders(nextToken)
+      });
+      if (!response.ok) throw new Error("Unable to load submissions");
+      const data = (await response.json()) as { submissions: AdminSubmission[] };
+      localStorage.setItem("fable-admin-token", nextToken);
+      setSubmissions(data.submissions);
+      setAdminState("ready");
+    } catch {
+      setSubmissions([]);
+      setAdminState("error");
+      setMessage("无法加载投稿。请确认管理员 token 和环境变量 FABLE_ADMIN_TOKEN 是否一致。");
+    }
+  }
+
+  async function reviewSubmission(id: string, action: "approve" | "reject") {
+    setBusyId(id);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/admin/submissions", {
+        method: "POST",
+        headers: {
+          ...adminHeaders(token),
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ id, action })
+      });
+      if (!response.ok) throw new Error("Review failed");
+      setSubmissions((current) => current.filter((submission) => submission.id !== id));
+      setMessage(action === "approve" ? "已批准并发布到公开档案。" : "已拒绝该投稿。");
+    } catch {
+      setMessage("操作失败，请稍后重试。");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function onTokenSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void loadSubmissions(token);
+  }
+
+  return (
+    <main className="admin-page">
+      <header className="admin-header">
+        <a
+          className="brand"
+          href="#top"
+          onClick={() => {
+            window.location.hash = "";
+            onExit();
+          }}
+        >
+          <Archive size={18} />
+          Fable Legacy
+        </a>
+        <button className="button ghost" type="button" onClick={() => void loadSubmissions()}>
+          <RefreshCw size={18} />
+          刷新
+        </button>
+      </header>
+
+      <section className="admin-shell">
+        <div className="section-heading">
+          <p className="eyebrow">Review Queue</p>
+          <h1>投稿审核</h1>
+          <p>这里显示尚未审批的投稿。批准后会写入公开归档，并把原投稿状态标记为 approved。</p>
+        </div>
+
+        <form className="admin-token-form" onSubmit={onTokenSubmit}>
+          <label>
+            管理员 token
+            <input
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              placeholder="FABLE_ADMIN_TOKEN"
+              type="password"
+            />
+          </label>
+          <button className="button primary" type="submit" disabled={adminState === "loading"}>
+            <LockKeyhole size={18} />
+            {adminState === "loading" ? "加载中..." : "进入审核"}
+          </button>
+        </form>
+
+        {message && <p className={`admin-message ${adminState === "error" ? "error" : ""}`}>{message}</p>}
+
+        <div className="admin-list">
+          {adminState === "ready" && submissions.length === 0 && (
+            <div className="empty-state">
+              <CheckCircle2 size={22} />
+              <p>当前没有待审核投稿。</p>
+            </div>
+          )}
+
+          {submissions.map((submission) => (
+            <article className="admin-card" key={submission.id}>
+              <div className="admin-card-main">
+                <span className="badge evidence-needs-review">{submission.status}</span>
+                <h2>{submission.project_name}</h2>
+                <p>{submission.description}</p>
+                <dl>
+                  <div>
+                    <dt>作者</dt>
+                    <dd>{submission.author}</dd>
+                  </div>
+                  <div>
+                    <dt>类型</dt>
+                    <dd>{submission.project_type}</dd>
+                  </div>
+                  <div>
+                    <dt>提交时间</dt>
+                    <dd>{submission.created_at}</dd>
+                  </div>
+                </dl>
+                <div className="usage-box">
+                  <h3>Fable 5 使用方式</h3>
+                  <p>{submission.fable_usage}</p>
+                </div>
+                <div className="detail-links">
+                  <a href={submission.project_url} target="_blank" rel="noreferrer">
+                    项目链接
+                    <ExternalLink size={16} />
+                  </a>
+                  <a href={submission.proof_url} target="_blank" rel="noreferrer">
+                    证明链接
+                    <ExternalLink size={16} />
+                  </a>
+                  {submission.contact && <span>联系方式：{submission.contact}</span>}
+                </div>
+              </div>
+              <div className="admin-actions">
+                <button
+                  className="button primary"
+                  type="button"
+                  disabled={busyId === submission.id}
+                  onClick={() => void reviewSubmission(submission.id, "approve")}
+                >
+                  <CheckCircle2 size={18} />
+                  {busyId === submission.id ? "处理中..." : "批准发布"}
+                </button>
+                <button
+                  className="button ghost"
+                  type="button"
+                  disabled={busyId === submission.id}
+                  onClick={() => void reviewSubmission(submission.id, "reject")}
+                >
+                  <ShieldAlert size={18} />
+                  拒绝
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function adminHeaders(token: string) {
+  return {
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`
+  };
+}
+
+function ProjectDetail({
+  project,
+  projectTranslations,
+  lang
+}: {
+  project: LegacyProject;
+  projectTranslations: ArchiveData["projectTranslations"];
+  lang: Lang;
+}) {
   const t = copy[lang].detail;
-  const localized = localizedProject(project, lang);
+  const localized = localizedProject(project, projectTranslations, lang);
 
   return (
     <aside className="detail-panel" aria-live="polite">

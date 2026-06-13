@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "pages:dev": "npm run build && wrangler pages dev dist --d1 FABLE_LEGACY_DB=fable-legacy-db --compatibility-date=2026-06-13",
+    "pages:dev": "npm run build && wrangler pages dev dist --d1 FABLE_LEGACY_DB=fable-legacy-db --compatibility-date=2026-06-13 --persist-to=.wrangler/state",
     "pages:deploy": "npm run build && wrangler pages deploy dist --project-name=fable-legacy"
   },
   "dependencies": {

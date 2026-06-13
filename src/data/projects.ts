@@ -4,7 +4,7 @@ export type LegacyProject = {
   id: string;
   name: string;
   author: string;
-  type: "Demo" | "Game" | "Tool" | "Website" | "Research" | "Benchmark" | "Refactor";
+  type: "Demo" | "Game" | "Tool" | "Website" | "Research" | "Benchmark" | "Refactor" | "Optimization";
   usage: string;
   summary: string;
   sourceUrl: string;
@@ -289,4 +289,4 @@ export const projects: LegacyProject[] = [
   }
 ];
 
-export const typeLabels = ["All", "Demo", "Game", "Tool", "Website", "Research", "Benchmark", "Refactor"] as const;
+export const typeLabels = ["All", "Demo", "Game", "Tool", "Website", "Research", "Benchmark", "Refactor", "Optimization"] as const;
