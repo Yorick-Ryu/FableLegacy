@@ -113,13 +113,21 @@ a {
   backdrop-filter: blur(16px);
 }
 
-.navlinks a {
+.navlinks a,
+.lang-toggle {
   padding: 9px 12px;
   color: var(--muted);
   font-size: 0.9rem;
 }
 
-.navlinks a:hover {
+.lang-toggle {
+  border: 1px solid rgba(95, 210, 198, 0.26);
+  background: rgba(95, 210, 198, 0.08);
+  cursor: pointer;
+}
+
+.navlinks a:hover,
+.lang-toggle:hover {
   color: var(--ink);
 }
 
