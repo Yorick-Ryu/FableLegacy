@@ -52,6 +52,4 @@ The first archive data lives in `src/data/projects.ts`. Entries intentionally in
 - `primary`: official Anthropic or direct documentation source.
 - `secondary`: press, partner, review, or benchmark source.
 - `community`: public community post or creator source.
-- `needs-review`: useful lead that still needs direct manual verification.
-
-Because several X/Instagram/YouTube artifacts expose limited metadata through public search, the site preserves those leads without pretending they are fully verified.
+Pending community submissions stay in the admin review queue until approved.

@@ -82,7 +82,7 @@ const copy = {
       submit: "Submit a project",
       entries: "seed entries",
       primary: "primary sources",
-      review: "need review"
+      community: "community leads"
     },
     archive: {
       eyebrow: "The Index",
@@ -130,7 +130,6 @@ const copy = {
       title: "Sources used for the seed archive"
     },
     detail: {
-      manual: "Needs manual confirmation",
       author: "Author",
       type: "Type",
       date: "Date",
@@ -157,7 +156,7 @@ const copy = {
       submit: "提交项目",
       entries: "种子条目",
       primary: "一手来源",
-      review: "待核验"
+      community: "社区线索"
     },
     archive: {
       eyebrow: "索引",
@@ -205,7 +204,6 @@ const copy = {
       title: "种子档案使用的来源"
     },
     detail: {
-      manual: "需要人工确认",
       author: "作者",
       type: "类型",
       date: "日期",
@@ -222,14 +220,12 @@ const evidenceLabel: Record<Lang, Record<LegacyProject["evidence"], string>> = {
   en: {
     primary: "Primary",
     secondary: "Secondary",
-    community: "Community",
-    "needs-review": "Needs review"
+    community: "Community"
   },
   zh: {
     primary: "一手来源",
     secondary: "二手来源",
-    community: "社区线索",
-    "needs-review": "待核验"
+    community: "社区线索"
   }
 };
 
@@ -432,8 +428,8 @@ function App() {
             <span>{t.hero.primary}</span>
           </div>
           <div>
-            <strong>{projects.filter((project) => project.needsConfirmation).length}</strong>
-            <span>{t.hero.review}</span>
+            <strong>{projects.filter((project) => project.evidence === "community").length}</strong>
+            <span>{t.hero.community}</span>
           </div>
         </aside>
       </section>
@@ -737,7 +733,7 @@ function AdminPanel({ onExit }: { onExit: () => void }) {
           {submissions.map((submission) => (
             <article className="admin-card" key={submission.id}>
               <div className="admin-card-main">
-                <span className="badge evidence-needs-review">{submission.status}</span>
+                <span className="badge status-pending">{submission.status}</span>
                 <h2>{submission.project_name}</h2>
                 <p>{submission.description}</p>
                 <dl>
@@ -825,12 +821,6 @@ function ProjectDetail({
       </div>
       <div className="detail-header">
         <span className={`badge evidence-${project.evidence}`}>{evidenceLabel[lang][project.evidence]}</span>
-        {project.needsConfirmation && (
-          <span className="review-flag">
-            <ShieldAlert size={15} />
-            {t.manual}
-          </span>
-        )}
       </div>
       <h2>{localized.name}</h2>
       <p>{localized.summary}</p>

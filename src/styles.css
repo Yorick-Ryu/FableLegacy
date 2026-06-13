@@ -393,7 +393,6 @@ dt {
 }
 
 .badge,
-.review-flag,
 .tag-row span {
   display: inline-flex;
   align-items: center;
@@ -420,8 +419,7 @@ dt {
   color: var(--paper);
 }
 
-.evidence-needs-review,
-.review-flag {
+.status-pending {
   color: var(--red);
   border-color: rgba(224, 93, 69, 0.42);
 }

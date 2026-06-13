@@ -14,7 +14,6 @@ type ProjectRow = {
   published_date: string;
   evidence: string;
   image_hint: string;
-  needs_confirmation: number;
 };
 
 type ProjectTranslationRow = {
@@ -70,7 +69,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       await env.FABLE_LEGACY_DB.batch([
         env.FABLE_LEGACY_DB.prepare(
           `SELECT id, name, author, project_type, usage, summary, source_url, project_url,
-            published_date, evidence, image_hint, needs_confirmation
+            published_date, evidence, image_hint
            FROM archive_projects
            WHERE status = 'published'
            ORDER BY sort_order ASC, published_date DESC`
@@ -125,8 +124,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       date: project.published_date,
       evidence: project.evidence,
       tags: tagsByProject[project.id] ?? [],
-      imageHint: project.image_hint,
-      needsConfirmation: project.needs_confirmation === 1 || undefined
+      imageHint: project.image_hint
     }));
 
     return json({

@@ -101,8 +101,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     env.FABLE_LEGACY_DB.prepare(
       `INSERT INTO archive_projects (
         id, name, author, project_type, usage, summary, source_url, project_url,
-        published_date, evidence, image_hint, needs_confirmation, sort_order, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'community', ?, 1, ?, 'published')`
+        published_date, evidence, image_hint, sort_order, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'community', ?, ?, 'published')`
     ).bind(
       projectId,
       submission.project_name,

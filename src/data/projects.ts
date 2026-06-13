@@ -1,4 +1,4 @@
-export type EvidenceLevel = "primary" | "secondary" | "community" | "needs-review";
+export type EvidenceLevel = "primary" | "secondary" | "community";
 
 export type LegacyProject = {
   id: string;
@@ -13,7 +13,6 @@ export type LegacyProject = {
   evidence: EvidenceLevel;
   tags: string[];
   imageHint: string;
-  needsConfirmation?: boolean;
 };
 
 export const timeline = [
@@ -53,7 +52,7 @@ export const sources = [
   {
     label: "Official Claude social thread",
     url: "https://x.com/claudeai/status/2065456678909227064",
-    note: "Official community showcase thread. Some individual media links need manual confirmation because public scraping exposes limited content."
+    note: "Official community showcase thread with individual media links gathered as public archive leads."
   },
   {
     label: "ExplainX community roundup",
@@ -143,8 +142,7 @@ export const projects: LegacyProject[] = [
     date: "2026-06-10",
     evidence: "secondary",
     tags: ["migration", "ruby", "enterprise"],
-    imageHint: "Large repository migration ledger",
-    needsConfirmation: true
+    imageHint: "Large repository migration ledger"
   },
   {
     id: "pokemon-firered-vision",
@@ -157,8 +155,7 @@ export const projects: LegacyProject[] = [
     date: "2026-06-10",
     evidence: "secondary",
     tags: ["game", "vision", "agent"],
-    imageHint: "Retro handheld game input stream",
-    needsConfirmation: true
+    imageHint: "Retro handheld game input stream"
   },
   {
     id: "survey-analysis-tool",
@@ -171,8 +168,7 @@ export const projects: LegacyProject[] = [
     date: "2026-06-10",
     evidence: "secondary",
     tags: ["research", "analytics", "long-horizon"],
-    imageHint: "Survey dashboard and statistical panels",
-    needsConfirmation: true
+    imageHint: "Survey dashboard and statistical panels"
   },
   {
     id: "procedural-shaders",
@@ -185,8 +181,7 @@ export const projects: LegacyProject[] = [
     date: "2026-06-13",
     evidence: "community",
     tags: ["shader", "creative-coding", "community"],
-    imageHint: "Procedural material swatches",
-    needsConfirmation: true
+    imageHint: "Procedural material swatches"
   },
   {
     id: "fluid-ink-simulation",
@@ -199,8 +194,7 @@ export const projects: LegacyProject[] = [
     date: "2026-06-13",
     evidence: "community",
     tags: ["fluid", "canvas", "creative-coding"],
-    imageHint: "Ink plumes and simulation controls",
-    needsConfirmation: true
+    imageHint: "Ink plumes and simulation controls"
   },
   {
     id: "goldfish-app",
@@ -213,8 +207,7 @@ export const projects: LegacyProject[] = [
     date: "2026-06-13",
     evidence: "community",
     tags: ["app", "community", "interactive"],
-    imageHint: "Small interactive creature app",
-    needsConfirmation: true
+    imageHint: "Small interactive creature app"
   },
   {
     id: "motion-website-higgsfield",
@@ -228,8 +221,7 @@ export const projects: LegacyProject[] = [
     date: "2026-06-11",
     evidence: "community",
     tags: ["website", "motion", "media-generation"],
-    imageHint: "Motion landing page and video assets",
-    needsConfirmation: true
+    imageHint: "Motion landing page and video assets"
   },
   {
     id: "real-time-app-review",
@@ -242,8 +234,7 @@ export const projects: LegacyProject[] = [
     date: "2026-06-09",
     evidence: "secondary",
     tags: ["real-time", "review", "production-build"],
-    imageHint: "Realtime state loop and canvas effects",
-    needsConfirmation: true
+    imageHint: "Realtime state loop and canvas effects"
   },
   {
     id: "agent-security-league-benchmark",
@@ -270,8 +261,7 @@ export const projects: LegacyProject[] = [
     date: "2026-06-11",
     evidence: "community",
     tags: ["frontend", "refactor", "personal-tools"],
-    imageHint: "Dense personal dashboard",
-    needsConfirmation: true
+    imageHint: "Dense personal dashboard"
   },
   {
     id: "soccer-neo-gothic-plane",
@@ -282,10 +272,9 @@ export const projects: LegacyProject[] = [
     summary: "A bundle entry awaiting direct media review; useful as an intake target because it names multiple visual projects.",
     sourceUrl: "https://www.instagram.com/p/DZfmFqJIK8Y/",
     date: "2026-06-13",
-    evidence: "needs-review",
+    evidence: "community",
     tags: ["game", "3d", "social-post"],
-    imageHint: "Three-item social media showcase",
-    needsConfirmation: true
+    imageHint: "Three-item social media showcase"
   }
 ];
 
