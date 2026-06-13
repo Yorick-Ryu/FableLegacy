@@ -1,0 +1,9 @@
+name = "fable-legacy"
+compatibility_date = "2026-06-13"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "FABLE_LEGACY_DB"
+database_name = "fable-legacy-db"
+database_id = "replace-with-cloudflare-d1-database-id"
+
