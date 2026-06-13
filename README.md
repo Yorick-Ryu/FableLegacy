@@ -5,7 +5,6 @@ Fable Legacy is a living archive for public projects, demos, refactors, benchmar
 ## Live site
 
 - Production: https://fable-legacy.rick216.cn
-- Cloudflare Pages: https://fable-legacy.pages.dev
 - GitHub: https://github.com/Yorick-Ryu/FableLegacy
 
 ## Local development
@@ -21,54 +20,30 @@ npm run dev
 npm run build
 ```
 
-## Cloudflare Pages deployment
+## Deployment
 
-This project is deployed through Cloudflare Pages with GitHub as the source repository:
+The site is deployed on Cloudflare Pages. A standard Pages setup is enough:
 
-- Pages project: `fable-legacy`
-- Production branch: `main`
 - Build command: `npm run build`
 - Output directory: `dist`
-- D1 database: `fable-legacy-db`
-- D1 database id: `09fd02cc-a247-41ac-8283-ad1e209a5944`
-- Custom domain: `fable-legacy.rick216.cn`
+- Pages Functions handle API routes under `/api`
+- D1 is used for archive and submission data
 
-To recreate the setup:
-
-1. Create or connect a Cloudflare Pages project named `fable-legacy`.
-2. Use `npm run build` as the build command and `dist` as the output directory.
-3. Create a D1 database if needed:
+Apply D1 migrations when setting up or updating the remote database:
 
 ```bash
-npx wrangler d1 create fable-legacy-db
+npx wrangler d1 migrations apply <database-name> --remote
 ```
 
-4. Replace `database_id` in `wrangler.toml` with the returned D1 database id.
-5. Apply the migration:
-
-```bash
-npx wrangler d1 migrations apply fable-legacy-db --remote
-```
-
-6. Deploy manually if you are not using GitHub-triggered Pages builds:
+Deploy manually if you are not using GitHub-triggered Pages builds:
 
 ```bash
 npm run pages:deploy
 ```
 
-The submit form posts to `/api/submit`. In Cloudflare Pages, `functions/api/submit.ts` validates the payload and writes pending submissions to D1 when the `FABLE_LEGACY_DB` binding is configured.
-
 ## Review submissions
 
-Pending submissions can be reviewed from `/#admin`. The admin page calls `/api/admin/submissions`, which requires an admin token in `Authorization: Bearer <token>`.
-
-Configure the token as a Cloudflare Pages environment variable:
-
-```bash
-npx wrangler pages secret put FABLE_ADMIN_TOKEN --project-name=fable-legacy
-```
-
-Approving a submission publishes it into `archive_projects` with `status = 'published'`, marks the original submission as `approved`, and makes it visible through `/api/archive`. Rejecting a submission marks it as `rejected`.
+Pending submissions can be reviewed from `/#admin`. The admin API requires a bearer token configured in the Cloudflare Pages environment.
 
 ## Seed research notes
 
