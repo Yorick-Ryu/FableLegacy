@@ -354,6 +354,13 @@ function App() {
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? filteredProjects[0] ?? null;
 
+  function selectType(type: (typeof typeLabels)[number]) {
+    const firstProject = type === "All" ? projects[0] : projects.find((project) => project.type === type);
+    if (!firstProject) return;
+    setSelectedType(type);
+    setSelectedProjectId(firstProject.id);
+  }
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -469,7 +476,7 @@ function App() {
               <button
                 key={type}
                 className={selectedType === type ? "active" : ""}
-                onClick={() => setSelectedType(type)}
+                onClick={() => selectType(type)}
                 type="button"
               >
                 {typeLabel[lang][type]}
