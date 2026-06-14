@@ -11,6 +11,7 @@ type ProjectRow = {
   summary: string;
   source_url: string;
   project_url: string | null;
+  media_url: string | null;
   published_date: string;
   evidence: string;
   image_hint: string;
@@ -68,7 +69,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     const [projectRows, translationRows, tagRows, timelineRows, timelineTranslationRows, sourceRows, sourceTranslationRows] =
       await env.FABLE_LEGACY_DB.batch([
         env.FABLE_LEGACY_DB.prepare(
-          `SELECT id, name, author, project_type, usage, summary, source_url, project_url,
+          `SELECT id, name, author, project_type, usage, summary, source_url, project_url, media_url,
             published_date, evidence, image_hint
            FROM archive_projects
            WHERE status = 'published'
@@ -121,6 +122,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       summary: project.summary,
       sourceUrl: project.source_url,
       projectUrl: project.project_url || undefined,
+      mediaUrl: project.media_url || undefined,
       date: project.published_date,
       evidence: project.evidence,
       tags: tagsByProject[project.id] ?? [],

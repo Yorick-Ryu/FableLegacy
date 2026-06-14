@@ -9,6 +9,7 @@ export type LegacyProject = {
   summary: string;
   sourceUrl: string;
   projectUrl?: string;
+  mediaUrl?: string;
   date: string;
   evidence: EvidenceLevel;
   tags: string[];

@@ -445,6 +445,13 @@ dt {
   border: 1px solid var(--line);
 }
 
+.detail-visual video {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: #050606;
+}
+
 .detail-visual span {
   display: block;
   margin-top: 10px;

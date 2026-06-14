@@ -135,7 +135,8 @@ const copy = {
       date: "Date",
       usage: "Fable 5 usage",
       source: "Source",
-      project: "Project"
+      project: "Project",
+      media: "Media"
     },
     footer: "Back to top",
     lang: "中文"
@@ -209,7 +210,8 @@ const copy = {
       date: "日期",
       usage: "Fable 5 使用方式",
       source: "来源",
-      project: "项目"
+      project: "项目",
+      media: "媒体"
     },
     footer: "回到顶部",
     lang: "EN"
@@ -823,8 +825,14 @@ function ProjectDetail({
   return (
     <aside className="detail-panel" aria-live="polite">
       <div className="detail-visual">
-        <Sparkles size={22} />
-        <span>{localized.imageHint}</span>
+        {project.mediaUrl ? (
+          <video src={project.mediaUrl} controls playsInline preload="metadata" aria-label={localized.imageHint} />
+        ) : (
+          <>
+            <Sparkles size={22} />
+            <span>{localized.imageHint}</span>
+          </>
+        )}
       </div>
       <div className="detail-header">
         <span className={`badge evidence-${project.evidence}`}>{evidenceLabel[lang][project.evidence]}</span>
@@ -862,6 +870,12 @@ function ProjectDetail({
         {project.projectUrl && (
           <a href={project.projectUrl} target="_blank" rel="noreferrer">
             {t.project}
+            <ExternalLink size={16} />
+          </a>
+        )}
+        {project.mediaUrl && (
+          <a href={project.mediaUrl} target="_blank" rel="noreferrer">
+            {t.media}
             <ExternalLink size={16} />
           </a>
         )}
