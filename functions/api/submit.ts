@@ -41,7 +41,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return json({ error: "Project URL and proof URL must be valid URLs" }, 400);
   }
 
-  const id = crypto.randomUUID();
+  const id = `${slugify(payload.projectName ?? "submission")}-${crypto.randomUUID().slice(0, 8)}`;
   const values = {
     id,
     projectName: payload.projectName!.trim(),
@@ -58,25 +58,42 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return json({ id, status: "accepted-without-db" }, 202);
   }
 
-  await ensureSubmissionsTable(env.FABLE_LEGACY_DB);
+  const publishedDate = new Date().toISOString().slice(0, 10);
+  const sortRow = await env.FABLE_LEGACY_DB.prepare(
+    `SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_sort_order FROM archive_projects`
+  ).first<{
+    next_sort_order: number;
+  }>();
+  const sortOrder = sortRow?.next_sort_order ?? 1;
+  const tag = slugify(values.projectType);
+  const imageHint = publicImageHint(values.projectType);
+  const submitterContact = values.contact || null;
 
-  await env.FABLE_LEGACY_DB.prepare(
-    `INSERT INTO submissions (
-      id, project_name, project_url, author, contact, project_type, fable_usage, description, proof_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  )
-    .bind(
+  await env.FABLE_LEGACY_DB.batch([
+    env.FABLE_LEGACY_DB.prepare(
+      `INSERT INTO archive_projects (
+        id, name, author, project_type, usage, summary, source_url, project_url,
+        published_date, evidence, image_hint, sort_order, status, submitter_contact
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'community', ?, ?, 'pending', ?)`
+    ).bind(
       values.id,
       values.projectName,
-      values.projectUrl,
       values.author,
-      values.contact,
       values.projectType,
       values.fableUsage,
       values.description,
-      values.proofUrl
-    )
-    .run();
+      values.proofUrl,
+      values.projectUrl,
+      publishedDate,
+      imageHint,
+      sortOrder,
+      submitterContact
+    ),
+    env.FABLE_LEGACY_DB.prepare(
+      `INSERT INTO archive_project_tags (project_id, tag, sort_order)
+       VALUES (?, ?, 1), (?, 'community-submission', 2)`
+    ).bind(values.id, tag, values.id)
+  ]);
 
   return json({ id, status: "pending" }, 201);
 };
@@ -103,29 +120,16 @@ function isUrl(value?: string) {
   }
 }
 
-async function ensureSubmissionsTable(db: D1Database) {
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS submissions (
-        id TEXT PRIMARY KEY,
-        project_name TEXT NOT NULL,
-        project_url TEXT NOT NULL,
-        author TEXT NOT NULL,
-        contact TEXT,
-        project_type TEXT NOT NULL,
-        fable_usage TEXT NOT NULL,
-        description TEXT NOT NULL,
-        proof_url TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pending',
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )`
-    )
-    .run();
+function slugify(value: string) {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
 
-  await db
-    .prepare(
-      `CREATE INDEX IF NOT EXISTS idx_submissions_status_created
-      ON submissions (status, created_at DESC)`
-    )
-    .run();
+  return slug || "submission";
+}
+
+function publicImageHint(projectType: string) {
+  return `Community ${projectType.trim().toLowerCase()} artifact`;
 }

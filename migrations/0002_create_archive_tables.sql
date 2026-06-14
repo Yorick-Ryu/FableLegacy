@@ -10,9 +10,8 @@ CREATE TABLE IF NOT EXISTS archive_projects (
   published_date TEXT NOT NULL,
   evidence TEXT NOT NULL,
   image_hint TEXT NOT NULL,
-  needs_confirmation INTEGER NOT NULL DEFAULT 0,
   sort_order INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'published',
+  status TEXT NOT NULL DEFAULT 'pending',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

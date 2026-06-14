@@ -27,7 +27,7 @@ The site is deployed on Cloudflare Pages. A standard Pages setup is enough:
 - Build command: `npm run build`
 - Output directory: `dist`
 - Pages Functions handle API routes under `/api`
-- D1 is used for archive and submission data
+- D1 is used for archive data
 
 Apply D1 migrations when setting up or updating the remote database:
 
@@ -41,9 +41,9 @@ Deploy manually if you are not using GitHub-triggered Pages builds:
 npm run pages:deploy
 ```
 
-## Review submissions
+## Review Archive Entries
 
-Pending submissions can be reviewed from `/#admin`. The admin API requires a bearer token configured in the Cloudflare Pages environment.
+Pending archive entries can be reviewed from `/#admin`. The admin API requires a bearer token configured in the Cloudflare Pages environment.
 
 ## Seed research notes
 
@@ -52,4 +52,4 @@ The first archive data lives in `src/data/projects.ts`. Entries intentionally in
 - `primary`: official Anthropic or direct documentation source.
 - `secondary`: press, partner, review, or benchmark source.
 - `community`: public community post or creator source.
-Pending community submissions stay in the admin review queue until approved.
+Community submissions are saved as `archive_projects` rows with `status = 'pending'` until approved.

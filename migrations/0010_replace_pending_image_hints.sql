@@ -1,7 +1,7 @@
 UPDATE archive_projects
 SET image_hint = 'Community ' || lower(project_type) || ' artifact',
     updated_at = CURRENT_TIMESTAMP
-WHERE status = 'published'
+WHERE status = 'approved'
   AND image_hint = project_type || ' submitted to the archive';
 
 UPDATE archive_project_translations

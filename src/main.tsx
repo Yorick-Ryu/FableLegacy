@@ -740,8 +740,8 @@ function AdminPanel({ onExit }: { onExit: () => void }) {
       <section className="admin-shell">
         <div className="section-heading">
           <p className="eyebrow">Review Queue</p>
-          <h1>投稿审核</h1>
-          <p>这里显示尚未审批的投稿。批准后会写入公开归档，并把原投稿状态标记为 approved。</p>
+          <h1>档案审核</h1>
+          <p>这里显示尚未审批的档案。批准后状态会改为 approved，并进入公开归档。</p>
         </div>
 
         <div className="admin-toolbar">
@@ -784,7 +784,7 @@ function AdminPanel({ onExit }: { onExit: () => void }) {
           {adminState === "ready" && submissions.length === 0 && (
             <div className="empty-state">
               <CheckCircle2 size={22} />
-              <p>当前没有待审核投稿。</p>
+              <p>当前没有待审核档案。</p>
             </div>
           )}
 
@@ -823,7 +823,6 @@ function AdminPanel({ onExit }: { onExit: () => void }) {
                       证明链接
                       <ExternalLink size={16} />
                     </a>
-                    {submission.contact && <span>联系方式：{submission.contact}</span>}
                   </div>
                 </div>
                 <div className="admin-actions">

@@ -11,7 +11,6 @@ INSERT OR REPLACE INTO archive_projects (
   published_date,
   evidence,
   image_hint,
-  needs_confirmation,
   sort_order,
   status
 ) VALUES (
@@ -27,9 +26,8 @@ INSERT OR REPLACE INTO archive_projects (
   '2026-06-09',
   'community',
   'Markdown system prompt archive with behavior policy sections',
-  0,
   16,
-  'published'
+  'approved'
 );
 
 INSERT OR REPLACE INTO archive_project_translations (

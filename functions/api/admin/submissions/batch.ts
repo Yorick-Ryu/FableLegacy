@@ -95,7 +95,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     const proofUrl = String(submission.proofUrl || submission.sourceUrl || "").trim();
     const projectUrl = String(submission.projectUrl || proofUrl).trim();
-    const id = String(submission.id || crypto.randomUUID()).trim();
+    const id = String(submission.id || `${slugify(String(submission.projectName || "archive"))}-${crypto.randomUUID().slice(0, 8)}`).trim();
 
     if (!id) {
       itemErrors.push("Missing id");
@@ -139,56 +139,86 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return json({ error: "Validation failed", errors }, 400);
   }
 
-  await ensureSubmissionsTable(env.FABLE_LEGACY_DB);
-
   const existingRows = await env.FABLE_LEGACY_DB.prepare(
-    `SELECT id FROM submissions WHERE id IN (${normalized.map(() => "?").join(", ")})`
+    `SELECT id FROM archive_projects WHERE id IN (${normalized.map(() => "?").join(", ")})`
   )
     .bind(...normalized.map((submission) => submission.id))
     .all<{ id: string }>();
   const existingIds = new Set((existingRows.results ?? []).map((row) => row.id));
-  const newSubmissions = normalized.filter((submission) => !existingIds.has(submission.id));
+  const newEntries = normalized.filter((submission) => !existingIds.has(submission.id));
 
-  if (newSubmissions.length > 0) {
-    await env.FABLE_LEGACY_DB.batch(
-      newSubmissions.map((submission) =>
+  if (newEntries.length > 0) {
+    const publishedDate = new Date().toISOString().slice(0, 10);
+    const sortRow = await env.FABLE_LEGACY_DB.prepare(
+      `SELECT COALESCE(MAX(sort_order), 0) AS max_sort_order FROM archive_projects`
+    ).first<{
+      max_sort_order: number;
+    }>();
+    const baseSortOrder = sortRow?.max_sort_order ?? 0;
+    const statements: D1PreparedStatement[] = [];
+
+    newEntries.forEach((submission, index) => {
+      const sortOrder = baseSortOrder + index + 1;
+      const submitterContact = submission.contact || null;
+      statements.push(
         env.FABLE_LEGACY_DB!.prepare(
-          `INSERT INTO submissions (
-            id, project_name, project_url, author, contact, project_type, fable_usage,
-            description, proof_url, status, project_name_zh, author_zh, fable_usage_zh,
-            description_zh
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`
+          `INSERT INTO archive_projects (
+            id, name, author, project_type, usage, summary, source_url, project_url,
+            published_date, evidence, image_hint, sort_order, status, submitter_contact
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'community', ?, ?, 'pending', ?)`
         ).bind(
           submission.id,
           submission.projectName,
-          submission.projectUrl,
           submission.author,
-          submission.contact,
           submission.projectType,
           submission.fableUsage,
           submission.description,
           submission.proofUrl,
-          submission.projectNameZh,
-          submission.authorZh,
-          submission.fableUsageZh,
-          submission.descriptionZh
-        )
-      )
-    );
+          submission.projectUrl,
+          publishedDate,
+          publicImageHint(submission.projectType, "en"),
+          sortOrder,
+          submitterContact
+        ),
+        env.FABLE_LEGACY_DB!.prepare(
+          `INSERT INTO archive_project_tags (project_id, tag, sort_order)
+           VALUES (?, ?, 1), (?, 'community-submission', 2)`
+        ).bind(submission.id, slugify(submission.projectType), submission.id)
+      );
+
+      if (hasZhTranslation(submission)) {
+        statements.push(
+          env.FABLE_LEGACY_DB!.prepare(
+            `INSERT INTO archive_project_translations (
+              project_id, locale, name, author, usage, summary, image_hint
+            ) VALUES (?, 'zh', ?, ?, ?, ?, ?)`
+          ).bind(
+            submission.id,
+            submission.projectNameZh || submission.projectName,
+            submission.authorZh || submission.author,
+            submission.fableUsageZh || submission.fableUsage,
+            submission.descriptionZh || submission.description,
+            publicImageHint(submission.projectType, "zh")
+          )
+        );
+      }
+    });
+
+    await env.FABLE_LEGACY_DB.batch(statements);
   }
 
   return json(
     {
       status: "ok",
-      created: newSubmissions.length,
-      skipped: normalized.length - newSubmissions.length,
-      submissions: normalized.map((submission) => ({
+      created: newEntries.length,
+      skipped: normalized.length - newEntries.length,
+      entries: normalized.map((submission) => ({
         id: submission.id,
         projectName: submission.projectName,
         status: existingIds.has(submission.id) ? "skipped" : "created"
       }))
     },
-    newSubmissions.length > 0 ? 201 : 200
+    newEntries.length > 0 ? 201 : 200
   );
 };
 
@@ -230,48 +260,41 @@ function isUrl(value?: string) {
   }
 }
 
-async function ensureSubmissionsTable(db: D1Database) {
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS submissions (
-        id TEXT PRIMARY KEY,
-        project_name TEXT NOT NULL,
-        project_url TEXT NOT NULL,
-        author TEXT NOT NULL,
-        contact TEXT,
-        project_type TEXT NOT NULL,
-        fable_usage TEXT NOT NULL,
-        description TEXT NOT NULL,
-        proof_url TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pending',
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )`
-    )
-    .run();
+function slugify(value: string) {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
 
-  await db
-    .prepare(
-      `CREATE INDEX IF NOT EXISTS idx_submissions_status_created
-      ON submissions (status, created_at DESC)`
-    )
-    .run();
-
-  await ensureSubmissionTranslationColumns(db);
+  return slug || "archive";
 }
 
-async function ensureSubmissionTranslationColumns(db: D1Database) {
-  const columns = await db.prepare(`PRAGMA table_info(submissions)`).all<{ name: string }>();
-  const names = new Set((columns.results ?? []).map((column) => column.name));
-  const additions = [
-    ["project_name_zh", "TEXT"],
-    ["author_zh", "TEXT"],
-    ["fable_usage_zh", "TEXT"],
-    ["description_zh", "TEXT"]
-  ] as const;
+function publicImageHint(projectType: string, locale: "en" | "zh") {
+  const normalizedType = projectType.trim();
 
-  for (const [name, type] of additions) {
-    if (!names.has(name)) {
-      await db.prepare(`ALTER TABLE submissions ADD COLUMN ${name} ${type}`).run();
-    }
+  if (locale === "zh") {
+    const typeLabels: Record<string, string> = {
+      Demo: "演示",
+      Game: "游戏",
+      Tool: "工具",
+      Website: "网站",
+      Research: "研究",
+      Benchmark: "评测",
+      Refactor: "重构",
+      Optimization: "优化"
+    };
+    return `社区${typeLabels[normalizedType] ?? normalizedType}条目`;
   }
+
+  return `Community ${normalizedType.toLowerCase()} artifact`;
+}
+
+function hasZhTranslation(submission: NormalizedSubmission) {
+  return Boolean(
+    submission.projectNameZh ||
+      submission.authorZh ||
+      submission.fableUsageZh ||
+      submission.descriptionZh
+  );
 }

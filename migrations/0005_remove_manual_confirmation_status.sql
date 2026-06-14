@@ -1,8 +1,4 @@
 UPDATE archive_projects
-SET needs_confirmation = 0
-WHERE needs_confirmation <> 0;
-
-UPDATE archive_projects
 SET evidence = 'community'
 WHERE evidence = 'needs-review';
 

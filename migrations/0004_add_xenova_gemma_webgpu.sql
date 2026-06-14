@@ -10,7 +10,6 @@ INSERT OR REPLACE INTO archive_projects (
   published_date,
   evidence,
   image_hint,
-  needs_confirmation,
   sort_order,
   status
 ) VALUES (
@@ -25,9 +24,8 @@ INSERT OR REPLACE INTO archive_projects (
   '2026-06-13',
   'community',
   'WebGPU inference kernels and token throughput chart',
-  0,
   15,
-  'published'
+  'approved'
 );
 
 INSERT OR REPLACE INTO archive_project_translations (

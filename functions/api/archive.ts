@@ -72,12 +72,18 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
           `SELECT id, name, author, project_type, usage, summary, source_url, project_url, media_url,
             published_date, evidence, image_hint
            FROM archive_projects
-           WHERE status = 'published'
+           WHERE status = 'approved'
            ORDER BY sort_order ASC, published_date DESC`
         ),
         env.FABLE_LEGACY_DB.prepare(
           `SELECT project_id, locale, name, author, usage, summary, image_hint
-           FROM archive_project_translations`
+           FROM archive_project_translations
+           WHERE EXISTS (
+             SELECT 1
+             FROM archive_projects
+             WHERE archive_projects.id = archive_project_translations.project_id
+               AND archive_projects.status = 'approved'
+           )`
         ),
         env.FABLE_LEGACY_DB.prepare(
           `SELECT project_id, tag
