@@ -273,6 +273,32 @@ function localizedSource(source: SourceEntry, translations: ArchiveData["sourceT
   return lang === "zh" ? { ...source, ...translations.zh?.[source.id] } : source;
 }
 
+function canEmbedMediaUrl(mediaUrl?: string) {
+  if (!mediaUrl) return false;
+
+  try {
+    const host = new URL(mediaUrl).hostname;
+    return !host.endsWith("twimg.com");
+  } catch {
+    return false;
+  }
+}
+
+function mediaLinkUrl(project: LegacyProject) {
+  if (!project.mediaUrl) return undefined;
+
+  try {
+    const host = new URL(project.mediaUrl).hostname;
+    if (host.endsWith("twimg.com") && project.sourceUrl.includes("x.com/")) {
+      return `${project.sourceUrl}/video/1`;
+    }
+  } catch {
+    return project.mediaUrl;
+  }
+
+  return project.mediaUrl;
+}
+
 function App() {
   const [isAdmin, setIsAdmin] = useState(() => typeof window !== "undefined" && window.location.hash === "#admin");
   const [lang, setLang] = useState<Lang>(initialLang);
@@ -821,11 +847,13 @@ function ProjectDetail({
 }) {
   const t = copy[lang].detail;
   const localized = localizedProject(project, projectTranslations, lang);
+  const embeddableMedia = canEmbedMediaUrl(project.mediaUrl);
+  const mediaHref = mediaLinkUrl(project);
 
   return (
     <aside className="detail-panel" aria-live="polite">
       <div className="detail-visual">
-        {project.mediaUrl ? (
+        {embeddableMedia ? (
           <video src={project.mediaUrl} controls playsInline preload="metadata" aria-label={localized.imageHint} />
         ) : (
           <>
@@ -873,8 +901,8 @@ function ProjectDetail({
             <ExternalLink size={16} />
           </a>
         )}
-        {project.mediaUrl && (
-          <a href={project.mediaUrl} target="_blank" rel="noreferrer">
+        {mediaHref && (
+          <a href={mediaHref} target="_blank" rel="noreferrer">
             {t.media}
             <ExternalLink size={16} />
           </a>
