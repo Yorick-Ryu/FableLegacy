@@ -63,6 +63,10 @@ type AdminSubmission = {
   proof_url: string;
   status: string;
   created_at: string;
+  project_name_zh: string | null;
+  author_zh: string | null;
+  fable_usage_zh: string | null;
+  description_zh: string | null;
 };
 
 const copy = {
@@ -663,6 +667,7 @@ function AdminPanel({ onExit }: { onExit: () => void }) {
   const [adminState, setAdminState] = useState<AdminState>("idle");
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [reviewLang, setReviewLang] = useState<Lang>("zh");
 
   async function loadSubmissions(nextToken = token) {
     setAdminState("loading");
@@ -739,21 +744,39 @@ function AdminPanel({ onExit }: { onExit: () => void }) {
           <p>这里显示尚未审批的投稿。批准后会写入公开归档，并把原投稿状态标记为 approved。</p>
         </div>
 
-        <form className="admin-token-form" onSubmit={onTokenSubmit}>
-          <label>
-            管理员 token
-            <input
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              placeholder="FABLE_ADMIN_TOKEN"
-              type="password"
-            />
-          </label>
-          <button className="button primary" type="submit" disabled={adminState === "loading"}>
-            <LockKeyhole size={18} />
-            {adminState === "loading" ? "加载中..." : "进入审核"}
-          </button>
-        </form>
+        <div className="admin-toolbar">
+          <form className="admin-token-form" onSubmit={onTokenSubmit}>
+            <label>
+              管理员 token
+              <input
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                placeholder="FABLE_ADMIN_TOKEN"
+                type="password"
+              />
+            </label>
+            <button className="button primary" type="submit" disabled={adminState === "loading"}>
+              <LockKeyhole size={18} />
+              {adminState === "loading" ? "加载中..." : "进入审核"}
+            </button>
+          </form>
+          <div className="review-lang-toggle" aria-label="审核语言">
+            <button
+              className={reviewLang === "zh" ? "active" : ""}
+              type="button"
+              onClick={() => setReviewLang("zh")}
+            >
+              中文
+            </button>
+            <button
+              className={reviewLang === "en" ? "active" : ""}
+              type="button"
+              onClick={() => setReviewLang("en")}
+            >
+              English
+            </button>
+          </div>
+        </div>
 
         {message && <p className={`admin-message ${adminState === "error" ? "error" : ""}`}>{message}</p>}
 
@@ -765,68 +788,89 @@ function AdminPanel({ onExit }: { onExit: () => void }) {
             </div>
           )}
 
-          {submissions.map((submission) => (
-            <article className="admin-card" key={submission.id}>
-              <div className="admin-card-main">
-                <span className="badge status-pending">{submission.status}</span>
-                <h2>{submission.project_name}</h2>
-                <p>{submission.description}</p>
-                <dl>
-                  <div>
-                    <dt>作者</dt>
-                    <dd>{submission.author}</dd>
+          {submissions.map((submission) => {
+            const localized = localizedSubmission(submission, reviewLang);
+            return (
+              <article className="admin-card" key={submission.id}>
+                <div className="admin-card-main">
+                  <span className="badge status-pending">{submission.status}</span>
+                  <h2>{localized.projectName}</h2>
+                  <p>{localized.description}</p>
+                  <dl>
+                    <div>
+                      <dt>作者</dt>
+                      <dd>{localized.author}</dd>
+                    </div>
+                    <div>
+                      <dt>类型</dt>
+                      <dd>{submission.project_type}</dd>
+                    </div>
+                    <div>
+                      <dt>提交时间</dt>
+                      <dd>{submission.created_at}</dd>
+                    </div>
+                  </dl>
+                  <div className="usage-box">
+                    <h3>Fable 5 使用方式</h3>
+                    <p>{localized.fableUsage}</p>
                   </div>
-                  <div>
-                    <dt>类型</dt>
-                    <dd>{submission.project_type}</dd>
+                  <div className="detail-links">
+                    <a href={submission.project_url} target="_blank" rel="noreferrer">
+                      项目链接
+                      <ExternalLink size={16} />
+                    </a>
+                    <a href={submission.proof_url} target="_blank" rel="noreferrer">
+                      证明链接
+                      <ExternalLink size={16} />
+                    </a>
+                    {submission.contact && <span>联系方式：{submission.contact}</span>}
                   </div>
-                  <div>
-                    <dt>提交时间</dt>
-                    <dd>{submission.created_at}</dd>
-                  </div>
-                </dl>
-                <div className="usage-box">
-                  <h3>Fable 5 使用方式</h3>
-                  <p>{submission.fable_usage}</p>
                 </div>
-                <div className="detail-links">
-                  <a href={submission.project_url} target="_blank" rel="noreferrer">
-                    项目链接
-                    <ExternalLink size={16} />
-                  </a>
-                  <a href={submission.proof_url} target="_blank" rel="noreferrer">
-                    证明链接
-                    <ExternalLink size={16} />
-                  </a>
-                  {submission.contact && <span>联系方式：{submission.contact}</span>}
+                <div className="admin-actions">
+                  <button
+                    className="button primary"
+                    type="button"
+                    disabled={busyId === submission.id}
+                    onClick={() => void reviewSubmission(submission.id, "approve")}
+                  >
+                    <CheckCircle2 size={18} />
+                    {busyId === submission.id ? "处理中..." : "批准发布"}
+                  </button>
+                  <button
+                    className="button ghost"
+                    type="button"
+                    disabled={busyId === submission.id}
+                    onClick={() => void reviewSubmission(submission.id, "reject")}
+                  >
+                    <ShieldAlert size={18} />
+                    拒绝
+                  </button>
                 </div>
-              </div>
-              <div className="admin-actions">
-                <button
-                  className="button primary"
-                  type="button"
-                  disabled={busyId === submission.id}
-                  onClick={() => void reviewSubmission(submission.id, "approve")}
-                >
-                  <CheckCircle2 size={18} />
-                  {busyId === submission.id ? "处理中..." : "批准发布"}
-                </button>
-                <button
-                  className="button ghost"
-                  type="button"
-                  disabled={busyId === submission.id}
-                  onClick={() => void reviewSubmission(submission.id, "reject")}
-                >
-                  <ShieldAlert size={18} />
-                  拒绝
-                </button>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       </section>
     </main>
   );
+}
+
+function localizedSubmission(submission: AdminSubmission, lang: Lang) {
+  if (lang === "en") {
+    return {
+      projectName: submission.project_name,
+      author: submission.author,
+      fableUsage: submission.fable_usage,
+      description: submission.description
+    };
+  }
+
+  return {
+    projectName: submission.project_name_zh?.trim() || submission.project_name,
+    author: submission.author_zh?.trim() || submission.author,
+    fableUsage: submission.fable_usage_zh?.trim() || submission.fable_usage,
+    description: submission.description_zh?.trim() || submission.description
+  };
 }
 
 function adminHeaders(token: string) {

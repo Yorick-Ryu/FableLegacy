@@ -15,6 +15,10 @@ type SubmissionRow = {
   proof_url: string;
   status: string;
   created_at: string;
+  project_name_zh: string | null;
+  author_zh: string | null;
+  fable_usage_zh: string | null;
+  description_zh: string | null;
 };
 
 type ReviewPayload = {
@@ -35,7 +39,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const status = new URL(request.url).searchParams.get("status") || "pending";
   const submissions = await env.FABLE_LEGACY_DB.prepare(
     `SELECT id, project_name, project_url, author, contact, project_type, fable_usage,
-      description, proof_url, status, created_at
+      description, proof_url, status, created_at, project_name_zh, author_zh,
+      fable_usage_zh, description_zh
      FROM submissions
      WHERE status = ?
      ORDER BY created_at DESC`
@@ -69,7 +74,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const submission = await env.FABLE_LEGACY_DB.prepare(
     `SELECT id, project_name, project_url, author, contact, project_type, fable_usage,
-      description, proof_url, status, created_at
+      description, proof_url, status, created_at, project_name_zh, author_zh,
+      fable_usage_zh, description_zh
      FROM submissions
      WHERE id = ?`
   )
@@ -96,8 +102,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }>();
   const sortOrder = sortRow?.next_sort_order ?? 1;
   const tag = slugify(submission.project_type);
+  const imageHint = publicImageHint(submission.project_type, "en");
+  const imageHintZh = publicImageHint(submission.project_type, "zh");
+  const hasZhTranslation = Boolean(
+    submission.project_name_zh?.trim() ||
+      submission.author_zh?.trim() ||
+      submission.fable_usage_zh?.trim() ||
+      submission.description_zh?.trim()
+  );
 
-  await env.FABLE_LEGACY_DB.batch([
+  const statements = [
     env.FABLE_LEGACY_DB.prepare(
       `INSERT INTO archive_projects (
         id, name, author, project_type, usage, summary, source_url, project_url,
@@ -113,15 +127,35 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       submission.proof_url,
       submission.project_url,
       publishedDate,
-      `${submission.project_type} submitted to the archive`,
+      imageHint,
       sortOrder
     ),
     env.FABLE_LEGACY_DB.prepare(
       `INSERT INTO archive_project_tags (project_id, tag, sort_order)
        VALUES (?, ?, 1), (?, 'community-submission', 2)`
-    ).bind(projectId, tag, projectId),
-    env.FABLE_LEGACY_DB.prepare(`UPDATE submissions SET status = 'approved' WHERE id = ?`).bind(submission.id)
-  ]);
+    ).bind(projectId, tag, projectId)
+  ];
+
+  if (hasZhTranslation) {
+    statements.push(
+      env.FABLE_LEGACY_DB.prepare(
+        `INSERT INTO archive_project_translations (
+          project_id, locale, name, author, usage, summary, image_hint
+        ) VALUES (?, 'zh', ?, ?, ?, ?, ?)`
+      ).bind(
+        projectId,
+        submission.project_name_zh?.trim() || submission.project_name,
+        submission.author_zh?.trim() || submission.author,
+        submission.fable_usage_zh?.trim() || submission.fable_usage,
+        submission.description_zh?.trim() || submission.description,
+        imageHintZh
+      )
+    );
+  }
+
+  statements.push(env.FABLE_LEGACY_DB.prepare(`UPDATE submissions SET status = 'approved' WHERE id = ?`).bind(submission.id));
+
+  await env.FABLE_LEGACY_DB.batch(statements);
 
   return json({ id: submission.id, status: "approved", projectId });
 };
@@ -164,6 +198,26 @@ function slugify(value: string) {
   return slug || "submission";
 }
 
+function publicImageHint(projectType: string, locale: "en" | "zh") {
+  const normalizedType = projectType.trim();
+
+  if (locale === "zh") {
+    const typeLabels: Record<string, string> = {
+      Demo: "演示",
+      Game: "游戏",
+      Tool: "工具",
+      Website: "网站",
+      Research: "研究",
+      Benchmark: "评测",
+      Refactor: "重构",
+      Optimization: "优化"
+    };
+    return `社区${typeLabels[normalizedType] ?? normalizedType}条目`;
+  }
+
+  return `Community ${normalizedType.toLowerCase()} artifact`;
+}
+
 async function ensureSubmissionsTable(db: D1Database) {
   await db
     .prepare(
@@ -189,4 +243,23 @@ async function ensureSubmissionsTable(db: D1Database) {
       ON submissions (status, created_at DESC)`
     )
     .run();
+
+  await ensureSubmissionTranslationColumns(db);
+}
+
+async function ensureSubmissionTranslationColumns(db: D1Database) {
+  const columns = await db.prepare(`PRAGMA table_info(submissions)`).all<{ name: string }>();
+  const names = new Set((columns.results ?? []).map((column) => column.name));
+  const additions = [
+    ["project_name_zh", "TEXT"],
+    ["author_zh", "TEXT"],
+    ["fable_usage_zh", "TEXT"],
+    ["description_zh", "TEXT"]
+  ] as const;
+
+  for (const [name, type] of additions) {
+    if (!names.has(name)) {
+      await db.prepare(`ALTER TABLE submissions ADD COLUMN ${name} ${type}`).run();
+    }
+  }
 }
